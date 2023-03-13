@@ -50,31 +50,23 @@ def ks_por_decil(df, score_col, target_col, flag_col='Flag_Base', n_decis=10):
 
 
 
-import pandas as pd
-import statsmodels.api as sm
+coef = result.params[1:]
+intercept = result.params[0]
 
-# Carrega a base de dados completa
-df_completa = pd.read_csv('caminho/do/arquivo.csv')
+# Cria uma função que aplica a equação logística a cada linha da base de dados
+def logit_equation(row):
+    return 1 / (1 + (1 / (2.71828 ** (intercept + (coef * row).sum()))))
 
-# Define as variáveis explicativas do modelo
-variaveis = ['var1', 'var2', 'var3']
-
-# Extrai os coeficientes do modelo treinado
-coeficientes = list(logit_model.params)
-
-# Remove o intercepto da lista de coeficientes
-coeficientes.pop(0)
-
-# Cria uma nova coluna na base de dados para armazenar as previsões
-df_completa['previsoes'] = 0
-
-# Itera sobre cada linha da base de dados e calcula a previsão
-for index, row in df_completa.iterrows():
-    previsao = 0
-    for i in range(len(variaveis)):
-        previsao += row[variaveis[i]] * coeficientes[i]
-    df_completa.loc[index, 'previsoes'] = previsao
+# Aplica a função logit_equation a cada linha da base de dados para obter as previsões
+predictions = data.apply(logit_equation, axis=1)
 
 # Visualiza as previsões
-print(df_completa['previsoes'])
+print(predictions)
+Observe que a função logit_equation aplica a equação logística a cada linha da base de dados, utilizando os coeficientes e a interceptação extraídos do modelo. Em seguida, a função apply é utilizada para aplicar a função logit_equation a cada linha da base de dados e gerar as previsões.
+
+
+
+
+
+
 
