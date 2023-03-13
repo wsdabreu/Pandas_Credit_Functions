@@ -1,33 +1,27 @@
-# Verifica se foi passado algum valor para base_col
-if base_col:
-    # Itera sobre as categorias únicas da variável base_col
-    for category in df_ks[base_col].unique():
-        # Filtra o dataframe para a categoria atual
-        df_category = df_ks[df_ks[base_col] == category]
+import pandas as pd
+import numpy as np
 
-        # Ordena o dataframe pela coluna de score em ordem decrescente
-        df_category.sort_values(score_col, ascending=False, inplace=True)
+def ks(df, score_col, target_col, flag_col=None, flag_values=None):
+    """
+    Calcula a curva KS para um modelo utilizando a métrica de score e a variável alvo em uma base de dados.
+    É possível calcular o KS para a base completa ou por categoria de uma variável, caso seja informada a coluna com a
+    flag de categorias.
 
-        # Cria uma coluna com o número acumulado de observações
-        df_category['cumulative_count'] = np.arange(1, len(df_category) + 1)
+    :param df: dataframe com as informações da base de dados
+    :param score_col: nome da coluna com a métrica de score
+    :param target_col: nome da coluna com a variável alvo
+    :param flag_col: nome da coluna com a flag de categorias (default=None)
+    :param flag_values: valores das categorias a serem consideradas para o cálculo do KS (default=None)
+    :return: o valor do KS para a base completa ou por categoria (caso a flag seja informada)
+    """
 
-        # Cria uma coluna com a proporção acumulada de observações
-        df_category['cumulative_percent'] = df_category['cumulative_count'] / len(df_category)
+    # Seleciona apenas as linhas que pertencem às categorias informadas, caso seja fornecida a flag
+    if flag_col is not None and flag_values is not None:
+        df = df[df[flag_col].isin(flag_values)]
 
-        # Calcula o número acumulado de eventos e não eventos
-        df_category['cumulative_event'] = df_category[target_col].cumsum()
-        df_category['cumulative_non_event'] = (1 - df_category[target_col]).cumsum()
+    # Cria um dataframe com as colunas de score e target
+    df_ks = pd.DataFrame({score_col: df[score_col], target_col: df[target_col]})
 
-        # Calcula a proporção acumulada de eventos e não eventos
-        df_category['cumulative_event_percent'] = df_category['cumulative_event'] / df_category[target_col].sum()
-        df_category['cumulative_non_event_percent'] = df_category['cumulative_non_event'] / (1 - df_category[target_col]).sum()
-
-        # Calcula a diferença entre as proporções acumuladas de eventos e não eventos
-        df_category['ks'] = abs(df_category['cumulative_event_percent'] - df_category['cumulative_non_event_percent'])
-
-        # Retorna o valor máximo da diferença entre as proporções acumuladas de eventos e não eventos (KS)
-        print(f"KS para a categoria {category}: {df_category['ks'].max()}")
-else:
     # Ordena o dataframe pela coluna de score em ordem decrescente
     df_ks.sort_values(score_col, ascending=False, inplace=True)
 
@@ -46,4 +40,7 @@ else:
     df_ks['cumulative_non_event_percent'] = df_ks['cumulative_non_event'] / (1 - df_ks[target_col]).sum()
 
     # Calcula a diferença entre as proporções acumuladas de eventos e não eventos
-    df_ks
+    df_ks['ks'] = abs(df_ks['cumulative_event_percent'] - df_ks['cumulative_non_event_percent'])
+
+    # Retorna o valor máximo da diferença entre as proporções acumuladas de eventos e não eventos (KS)
+    return df_ks['ks'].max()
