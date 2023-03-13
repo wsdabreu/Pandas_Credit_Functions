@@ -47,3 +47,20 @@ def ks_por_decil(df, score_col, target_col, flag_col='Flag_Base', n_decis=10):
 
     # Retorna o dicionário com os valores de KS de cada categoria e da base completa
     return ks_dict
+
+
+
+def get_logit_equation(logit_model):
+    equation = '1 / (1 + exp(-('
+    coef = logit_model.params
+    var_names = coef.index
+    for i, name in enumerate(var_names):
+        if i == 0:
+            continue  # Intercepto não é incluído na equação
+        if coef[name] >= 0:
+            sign = '+'
+        else:
+            sign = '-'
+        equation += sign + f' {abs(coef[name]):.4f} * {name}'
+    equation += ')))'
+    return equation
