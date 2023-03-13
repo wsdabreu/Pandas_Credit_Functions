@@ -1,46 +1,49 @@
 import pandas as pd
 import numpy as np
 
-def ks(df, score_col, target_col, flag_col=None, flag_values=None):
-    """
-    Calcula a curva KS para um modelo utilizando a métrica de score e a variável alvo em uma base de dados.
-    É possível calcular o KS para a base completa ou por categoria de uma variável, caso seja informada a coluna com a
-    flag de categorias.
+def ks_por_decil(df, score_col, target_col, flag_col='Flag_Base', n_decis=10):
+    # Cria um dataframe com as colunas de score, target e flag
+    df_ks = pd.DataFrame({score_col: df[score_col], target_col: df[target_col], flag_col: df[flag_col]})
 
-    :param df: dataframe com as informações da base de dados
-    :param score_col: nome da coluna com a métrica de score
-    :param target_col: nome da coluna com a variável alvo
-    :param flag_col: nome da coluna com a flag de categorias (default=None)
-    :param flag_values: valores das categorias a serem consideradas para o cálculo do KS (default=None)
-    :return: o valor do KS para a base completa ou por categoria (caso a flag seja informada)
-    """
+    # Divide a variável de score em n_decis decis usando a função qcut do pandas
+    df_ks['decil'] = pd.qcut(df_ks[score_col], n_decis, labels=False) + 1
 
-    # Seleciona apenas as linhas que pertencem às categorias informadas, caso seja fornecida a flag
-    if flag_col is not None and flag_values is not None:
-        df = df[df[flag_col].isin(flag_values)]
+    # Cria um dataframe com as estatísticas de cada decil e categoria
+    df_decis = df_ks.groupby([flag_col, 'decil']).agg({score_col: ['min', 'max', 'count'], target_col: 'sum'})
 
-    # Cria um dataframe com as colunas de score e target
-    df_ks = pd.DataFrame({score_col: df[score_col], target_col: df[target_col]})
+    # Cria colunas para o número acumulado de observações e eventos
+    df_decis['cumulative_count'] = df_decis[score_col]['count'].cumsum()
+    df_decis['cumulative_event'] = df_decis[target_col]['sum'].cumsum()
 
-    # Ordena o dataframe pela coluna de score em ordem decrescente
-    df_ks.sort_values(score_col, ascending=False, inplace=True)
+    # Calcula as proporções acumuladas de observações e eventos
+    total_count = df_decis[score_col]['count'].sum()
+    total_event = df_decis[target_col]['sum'].sum()
+    df_decis['cumulative_percent'] = df_decis['cumulative_count'] / total_count
+    df_decis['cumulative_event_percent'] = df_decis['cumulative_event'] / total_event
 
-    # Cria uma coluna com o número acumulado de observações
-    df_ks['cumulative_count'] = np.arange(1, len(df_ks) + 1)
-
-    # Cria uma coluna com a proporção acumulada de observações
-    df_ks['cumulative_percent'] = df_ks['cumulative_count'] / len(df_ks)
-
-    # Calcula o número acumulado de eventos e não eventos
-    df_ks['cumulative_event'] = df_ks[target_col].cumsum()
-    df_ks['cumulative_non_event'] = (1 - df_ks[target_col]).cumsum()
-
-    # Calcula a proporção acumulada de eventos e não eventos
-    df_ks['cumulative_event_percent'] = df_ks['cumulative_event'] / df_ks[target_col].sum()
-    df_ks['cumulative_non_event_percent'] = df_ks['cumulative_non_event'] / (1 - df_ks[target_col]).sum()
+    # Calcula as proporções acumuladas de não eventos
+    df_decis['cumulative_non_event_percent'] = (df_decis['cumulative_count'] - df_decis[target_col]['sum']) / (total_count - total_event)
 
     # Calcula a diferença entre as proporções acumuladas de eventos e não eventos
-    df_ks['ks'] = abs(df_ks['cumulative_event_percent'] - df_ks['cumulative_non_event_percent'])
+    df_decis['ks'] = df_decis['cumulative_event_percent'] - df_decis['cumulative_non_event_percent']
 
-    # Retorna o valor máximo da diferença entre as proporções acumuladas de eventos e não eventos (KS)
-    return df_ks['ks'].max()
+    # Cria um dicionário para armazenar os valores de KS de cada categoria
+    ks_dict = {}
+
+    # Calcula o KS para cada categoria da coluna Flag_Base
+    for category in df[flag_col].unique():
+        try:
+            # Seleciona o dataframe correspondente à categoria
+            df_cat = df_decis.loc[category, :]
+
+            # Armazena o valor máximo da diferença entre as proporções acumuladas de eventos e não eventos (KS)
+            ks_dict[category] = df_cat['ks'].max()
+        except KeyError:
+            # Caso a categoria não esteja presente no dataframe, armazena um valor nulo
+            ks_dict[category] = None
+
+    # Armazena o valor máximo do KS da base completa
+    ks_dict['Total'] = df_decis.loc[:, 'ks'].max()
+
+    # Retorna o dicionário com os valores de KS de cada categoria e da base completa
+    return ks_dict
