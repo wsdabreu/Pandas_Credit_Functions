@@ -1,0 +1,49 @@
+# Verifica se foi passado algum valor para base_col
+if base_col:
+    # Itera sobre as categorias únicas da variável base_col
+    for category in df_ks[base_col].unique():
+        # Filtra o dataframe para a categoria atual
+        df_category = df_ks[df_ks[base_col] == category]
+
+        # Ordena o dataframe pela coluna de score em ordem decrescente
+        df_category.sort_values(score_col, ascending=False, inplace=True)
+
+        # Cria uma coluna com o número acumulado de observações
+        df_category['cumulative_count'] = np.arange(1, len(df_category) + 1)
+
+        # Cria uma coluna com a proporção acumulada de observações
+        df_category['cumulative_percent'] = df_category['cumulative_count'] / len(df_category)
+
+        # Calcula o número acumulado de eventos e não eventos
+        df_category['cumulative_event'] = df_category[target_col].cumsum()
+        df_category['cumulative_non_event'] = (1 - df_category[target_col]).cumsum()
+
+        # Calcula a proporção acumulada de eventos e não eventos
+        df_category['cumulative_event_percent'] = df_category['cumulative_event'] / df_category[target_col].sum()
+        df_category['cumulative_non_event_percent'] = df_category['cumulative_non_event'] / (1 - df_category[target_col]).sum()
+
+        # Calcula a diferença entre as proporções acumuladas de eventos e não eventos
+        df_category['ks'] = abs(df_category['cumulative_event_percent'] - df_category['cumulative_non_event_percent'])
+
+        # Retorna o valor máximo da diferença entre as proporções acumuladas de eventos e não eventos (KS)
+        print(f"KS para a categoria {category}: {df_category['ks'].max()}")
+else:
+    # Ordena o dataframe pela coluna de score em ordem decrescente
+    df_ks.sort_values(score_col, ascending=False, inplace=True)
+
+    # Cria uma coluna com o número acumulado de observações
+    df_ks['cumulative_count'] = np.arange(1, len(df_ks) + 1)
+
+    # Cria uma coluna com a proporção acumulada de observações
+    df_ks['cumulative_percent'] = df_ks['cumulative_count'] / len(df_ks)
+
+    # Calcula o número acumulado de eventos e não eventos
+    df_ks['cumulative_event'] = df_ks[target_col].cumsum()
+    df_ks['cumulative_non_event'] = (1 - df_ks[target_col]).cumsum()
+
+    # Calcula a proporção acumulada de eventos e não eventos
+    df_ks['cumulative_event_percent'] = df_ks['cumulative_event'] / df_ks[target_col].sum()
+    df_ks['cumulative_non_event_percent'] = df_ks['cumulative_non_event'] / (1 - df_ks[target_col]).sum()
+
+    # Calcula a diferença entre as proporções acumuladas de eventos e não eventos
+    df_ks
