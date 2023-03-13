@@ -50,17 +50,31 @@ def ks_por_decil(df, score_col, target_col, flag_col='Flag_Base', n_decis=10):
 
 
 
-def get_logit_equation(logit_model):
-    equation = '1 / (1 + exp(-('
-    coef = logit_model.params
-    var_names = coef.index
-    for i, name in enumerate(var_names):
-        if i == 0:
-            continue  # Intercepto não é incluído na equação
-        if coef[name] >= 0:
-            sign = '+'
-        else:
-            sign = '-'
-        equation += sign + f' {abs(coef[name]):.4f} * {name}'
-    equation += ')))'
-    return equation
+import pandas as pd
+import statsmodels.api as sm
+
+# Carrega a base de dados completa
+df_completa = pd.read_csv('caminho/do/arquivo.csv')
+
+# Define as variáveis explicativas do modelo
+variaveis = ['var1', 'var2', 'var3']
+
+# Extrai os coeficientes do modelo treinado
+coeficientes = list(logit_model.params)
+
+# Remove o intercepto da lista de coeficientes
+coeficientes.pop(0)
+
+# Cria uma nova coluna na base de dados para armazenar as previsões
+df_completa['previsoes'] = 0
+
+# Itera sobre cada linha da base de dados e calcula a previsão
+for index, row in df_completa.iterrows():
+    previsao = 0
+    for i in range(len(variaveis)):
+        previsao += row[variaveis[i]] * coeficientes[i]
+    df_completa.loc[index, 'previsoes'] = previsao
+
+# Visualiza as previsões
+print(df_completa['previsoes'])
+
