@@ -1,30 +1,23 @@
 import pandas as pd
-import numpy as np
 
-def correlacao_variaveis(df):
-    # Calcular a matriz de correlação
-    matriz_correlacao = df.corr().stack().reset_index()
-    
-    # Renomear as colunas
-    matriz_correlacao.columns = ['Variavel_correlacionada_1', 'Variavel_correlacionada_2', 'Correlacao']
-    
-    # Filtrar os resultados para excluir a correlação de uma variável consigo mesma (correlação igual a 1)
-    matriz_correlacao = matriz_correlacao[matriz_correlacao['Correlacao'] != 1]
-    
-    # Remover as duplicatas, mantendo apenas uma combinação das variáveis correlacionadas
-    matriz_correlacao = matriz_correlacao.loc[~pd.DataFrame(np.sort(matriz_correlacao[['Variavel_correlacionada_1', 'Variavel_correlacionada_2']], axis=1)).duplicated(keep='first')]
+# Cria um DataFrame de exemplo
+df = pd.DataFrame({'A': [1, 2, 3, 4, 5],
+                   'B': [10, 20, 30, 40, 50],
+                   'C': [5, 4, 3, 2, 1]})
 
-    return matriz_correlacao
+# Calcula a matriz de correlação
+corr_matrix = df.corr()
 
-# Exemplo de uso da função
-dados = {
-    'A': [1, 2, 3, 4, 5],
-    'B': [2, 3, 4, 5, 6],
-    'C': [5, 4, 3, 2, 1],
-    'D': [1, 3, 5, 7, 9],
-}
+# Cria um conjunto para armazenar as correlações únicas
+unique_correlations = set()
 
-df = pd.DataFrame(dados)
+# Itera sobre a matriz de correlação e adiciona as correlações únicas ao conjunto
+for col in corr_matrix.columns:
+    for index, value in corr_matrix[col].iteritems():
+        if col != index:
+            unique_correlations.add(tuple(sorted([col, index])) + (value,))
 
-resultado = correlacao_variaveis(df)
-print(resultado)
+# Cria um DataFrame com as correlações únicas
+correlated_vars_df = pd.DataFrame(unique_correlations, columns=['Var1', 'Var2', 'Correlation'])
+
+print(correlated_vars_df)
