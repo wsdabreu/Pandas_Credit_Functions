@@ -12,10 +12,8 @@ def correlacao_variaveis(df):
     matriz_correlacao = matriz_correlacao[matriz_correlacao['Correlacao'] != 1]
     
     # Remover as duplicatas, mantendo apenas uma combinação das variáveis correlacionadas
-    matriz_correlacao['sorted_columns'] = matriz_correlacao.apply(lambda x: sorted([x['Variavel_correlacionada_1'], x['Variavel_correlacionada_2']]), axis=1)
-    matriz_correlacao['duplicates'] = matriz_correlacao['sorted_columns'].duplicated(keep='first')
-    matriz_correlacao = matriz_correlacao[matriz_correlacao['duplicates'] == False].drop(columns=['sorted_columns', 'duplicates'])
-    
+    matriz_correlacao = matriz_correlacao.loc[~pd.DataFrame(np.sort(matriz_correlacao[['Variavel_correlacionada_1', 'Variavel_correlacionada_2']], axis=1)).duplicated(keep='first')]
+
     return matriz_correlacao
 
 # Exemplo de uso da função
