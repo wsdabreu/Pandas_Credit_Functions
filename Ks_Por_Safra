@@ -1,33 +1,49 @@
 import pandas as pd
 import numpy as np
 
-def ks_por_safra(df, score_col, target_col, safra_col):
+def ks_por_decil_e_safra(df, score_col, target_col, safra_col, n_decis=10):
     # Cria um dataframe com as colunas de score, target e safra
     df_ks = pd.DataFrame({score_col: df[score_col], target_col: df[target_col], safra_col: df[safra_col]})
 
-    # Ordena o dataframe pelo score
-    df_ks.sort_values(by=[score_col], inplace=True, ascending=False)
+    ks_tables = []
 
-    # Calcula o número total de observações e eventos
-    total_count = df_ks.shape[0]
-    total_event = df_ks[target_col].sum()
+    # Loop por cada safra
+    for s in df[safra_col].unique():
+        # Subconjunto do dataframe com as observações da safra atual
+        df_safra = df_ks[df_ks[safra_col] == s]
 
-    # Cria um dataframe com as estatísticas de cada safra
-    df_safra = df_ks.groupby(safra_col).agg({score_col: ['min', 'max', 'count'], target_col: 'sum'})
+        # Divide a variável de score em n_decis decis usando a função qcut do pandas
+        df_safra['decil'] = pd.qcut(df_safra[score_col], n_decis, labels=False) + 1
 
-    # Cria colunas para o número acumulado de observações e eventos
-    df_safra['cumulative_count'] = df_safra[score_col]['count'].cumsum()
-    df_safra['cumulative_event'] = df_safra[target_col]['sum'].cumsum()
+        # Cria um dataframe com as estatísticas de cada decil da safra atual
+        df_decis_safra = df_safra.groupby('decil').agg({score_col: ['min', 'max', 'count'], target_col: 'sum'})
 
-    # Calcula as proporções acumuladas de observações e eventos
-    df_safra['cumulative_percent'] = df_safra['cumulative_count'] / total_count
-    df_safra['cumulative_event_percent'] = df_safra['cumulative_event'] / total_event
+        # Cria colunas para o número acumulado de observações e eventos da safra atual
+        df_decis_safra['cumulative_count'] = df_decis_safra[score_col]['count'].cumsum()
+        df_decis_safra['cumulative_event'] = df_decis_safra[target_col]['sum'].cumsum()
 
-    # Calcula as proporções acumuladas de não eventos
-    df_safra['cumulative_non_event_percent'] = (df_safra['cumulative_count'] - df_safra['cumulative_event']) / (total_count - total_event)
+        # Calcula as proporções acumuladas de observações e eventos da safra atual
+        total_count = df_decis_safra[score_col]['count'].sum()
+        total_event = df_decis_safra[target_col]['sum'].sum()
+        df_decis_safra['cumulative_percent'] = df_decis_safra['cumulative_count'] / total_count
+        df_decis_safra['cumulative_event_percent'] = df_decis_safra['cumulative_event'] / total_event
 
-    # Calcula a diferença entre as proporções acumuladas de eventos e não eventos
-    df_safra['ks'] = df_safra['cumulative_event_percent'] - df_safra['cumulative_non_event_percent']
+        # Calcula as proporções acumuladas de não eventos da safra atual
+        df_decis_safra['cumulative_non_event_percent'] = (df_decis_safra['cumulative_count'] - df_decis_safra[target_col]['sum']) / (total_count - total_event)
 
-    # Retorna um dataframe com os valores de KS de cada safra
-    return df_safra['ks']
+        # Calcula a diferença entre as proporções acumuladas de eventos e não eventos da safra atual
+        df_decis_safra['ks'] = df_decis_safra['cumulative_event_percent'] - df_decis_safra['cumulative_non_event_percent']
+
+        # Cria um dataframe com os valores de KS de cada decil da safra atual
+        ks_table = df_decis_safra['ks'].to_frame().T
+
+        # Renomeia as colunas com o número do decil
+        ks_table.columns = [f'Decil {d}' for d in range(1, n_decis+1)]
+
+        # Adiciona a tabela de KS da safra atual à lista de tabelas de KS por safra
+        ks_tables.append(ks_table)
+
+    # Concatena as tabelas de KS de cada safra em um único dataframe, com as safra como colunas e os decils como linhas
+    ks_table_all = pd.concat(ks_tables, axis=1)
+
+   
